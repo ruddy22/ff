@@ -11,10 +11,9 @@ import           Data.Foldable (traverse_)
 import           Data.FullMap (FullMap (FullMap))
 import qualified Data.FullMap as FullMap
 import qualified Data.Text as Text
-import           Data.Time (Day, toGregorian)
+import           Data.Time (Day, fromGregorian, toGregorian)
 import           Data.Version (showVersion)
 import           Foreign.Hoppy.Runtime (withScopedPtr)
-import           QAbstractSpinBox (setReadOnly)
 import           QApplication (QApplication, new)
 import           QBoxLayout (QBoxLayoutPtr, addLayout, addStretch, addWidget,
                              insertWidget)
@@ -22,9 +21,9 @@ import           QCloseEvent (QCloseEvent)
 import           QCoreApplication (exec, setApplicationName,
                                    setApplicationVersion, setOrganizationDomain,
                                    setOrganizationName)
-import           QDate (newWithYearMonthDay)
+import           QDate (QDate, day, month, newWithYMD, year)
 import           QDateEdit (newWithDate)
-import           QDateTimeEdit (setCalendarPopup)
+import           QDateTimeEdit (dateChangedSignal, setCalendarPopup)
 import           QFrame (QFrame, QFrameShape (StyledPanel), new, setFrameShape)
 import           QHBoxLayout (QHBoxLayout, new)
 import           QLabel (newWithText)
@@ -35,6 +34,7 @@ import           QSettings (new, setValue, value)
 import           QShowEvent (QShowEvent)
 import           QTabWidget (QTabWidget, addTab, new)
 import           Qtah.Event (onEvent)
+import           Qtah.Signal (connect_)
 import           QToolBox (QToolBox, QToolBoxPtr, addItem, new, setItemText)
 import           QVariant (newWithByteArray, toByteArray)
 import           QVBoxLayout (QVBoxLayout, newWithParent)
@@ -154,22 +154,26 @@ addNote this modeSections note = do
                 (FullMap.lookup mode sectionIndices)
                 (sectionLabel mode $ n + 1)
 
-newDateWidget :: String -> Day -> IO QHBoxLayout
-newDateWidget label date = do
+newDateWidget :: String -> (Day -> IO ()) -> Day -> IO QHBoxLayout
+newDateWidget label saveDate hdate = do
     box <- QHBoxLayout.new
     addWidget box =<< QLabel.newWithText label
     addWidget box =<< do
         dateEdit <-
-            QDateEdit.newWithDate
-                =<< QDate.newWithYearMonthDay (fromInteger y) m d
+            QDateEdit.newWithDate =<< QDate.newWithYMD (fromInteger y) m d
         setCalendarPopup dateEdit True
-        setReadOnly      dateEdit True
+        connect_         dateEdit dateChangedSignal $ \qdate ->
+            saveDate
+                =<< fromGregorian
+                <$> (toInteger <$> year qdate)
+                <*> month qdate
+                <*> day qdate
         pure dateEdit
     pure box
-    where (y, m, d) = toGregorian date
+    where (y, m, d) = toGregorian hdate
 
 newNoteWidget :: NoteView -> IO QFrame
-newNoteWidget NoteView { text, start, end } = do
+newNoteWidget note@NoteView { text, start, end } = do
     this <- QFrame.new
     setFrameShape this StyledPanel
     do
@@ -177,8 +181,11 @@ newNoteWidget NoteView { text, start, end } = do
         addWidget box =<< QLabel.newWithText (Text.unpack text)
         addLayout box =<< do
             fieldsBox <- QHBoxLayout.new
-            addLayout fieldsBox =<< newDateWidget "Start:" start
-            whenJust end $ addLayout fieldsBox <=< newDateWidget "Deadline:"
+            addLayout fieldsBox
+                =<< newDateWidget "Start:" (saveStart note) start
+            whenJust end $ addLayout fieldsBox <=< newDateWidget
+                "Deadline:"
+                (saveEnd note)
             addStretch fieldsBox
             pure fieldsBox
     pure this
@@ -186,3 +193,9 @@ newNoteWidget NoteView { text, start, end } = do
 -- Because last item is always a stretch.
 sectionSize :: QLayoutConstPtr layout => layout -> IO Int
 sectionSize layout = pred <$> count layout
+
+saveStart :: NoteView -> Day -> IO ()
+saveStart = _
+
+saveEnd :: NoteView -> Day -> IO ()
+saveEnd = _
