@@ -10,3 +10,4 @@ ${STACK:-stack}                           \
         --haddock                         \
         --no-haddock-deps                 \
         "$@"
+${STACK:-stack} build build --exec build
