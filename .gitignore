@@ -2,6 +2,7 @@
 .hpc
 .hsenv
 .HTF/
+.shake
 .stack-work/
 *.aux
 *.chi
@@ -13,6 +14,7 @@
 *.hp
 *.o
 *.prof
+build.cabal
 cabal-dev
 cabal.project.local
 cabal.sandbox.config

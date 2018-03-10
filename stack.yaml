@@ -1,9 +1,9 @@
-resolver: lts-10.7
+resolver: lts-10.8
 
 packages:
+  - build
   - ff
   - ff-core
-  - ff-qt
 
 extra-deps:
   # ff:

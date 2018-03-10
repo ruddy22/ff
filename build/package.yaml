@@ -1,0 +1,8 @@
+name: build
+
+executable:
+  main: Main
+
+dependencies:
+  - base
+  - shake
