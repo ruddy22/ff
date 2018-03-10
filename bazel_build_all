@@ -1,0 +1,10 @@
+#!/bin/bash
+set -eux -o pipefail
+
+components=(
+    ff-qt
+)
+
+for component in $components; do
+    bazel build //$component:all
+done
