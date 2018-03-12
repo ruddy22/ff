@@ -1,7 +1,9 @@
+.build/
 .cabal-sandbox/
 .hpc
 .hsenv
 .HTF/
+.lib
 .stack-work/
 *.aux
 *.chi
@@ -18,5 +20,5 @@ cabal.project.local
 cabal.sandbox.config
 dist
 dist-*
-ff-core.cabal
 ff.cabal
+target/

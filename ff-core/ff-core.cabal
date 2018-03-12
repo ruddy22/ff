@@ -1,0 +1,83 @@
+build-type: Simple
+cabal-version: >= 1.8
+copyright:
+  2018 Yuriy Syrovetskiy, Nikolay Loginov
+name: ff-core
+version: 0
+
+library
+  build-depends:
+      aeson
+    , base
+    , bytestring
+    , crdt
+    , directory
+    , filepath
+    , mainland-pretty
+    , mtl
+    , optparse-applicative
+    , random
+    , stm
+    , temporary
+    , text
+    , time
+    , typed-process
+    , yaml
+  exposed-modules:
+    FF
+    FF.Config
+    FF.CrdtAesonInstances
+    FF.Options
+    FF.Storage
+    FF.Types
+    FF.UI
+  hs-source-dirs: lib
+  other-modules:
+    Data.FullMap
+
+test-suite test
+  build-depends:
+      aeson
+    , base
+    , containers
+    , crdt
+    , crdt-test
+    , errors
+    , filepath
+    , mtl
+    , QuickCheck
+    , quickcheck-instances
+    , tasty-hunit
+    , tasty-quickcheck
+    , tasty-th
+    , text
+    , time
+    , unordered-containers
+
+    , ff-core
+
+  hs-source-dirs: test
+  main-is: Main.hs
+  other-modules:
+    ArbitraryOrphans
+  type: exitcode-stdio-1.0
+
+test-suite features
+  build-depends:
+      base
+    , blaze-html
+    , interpolate
+  main-is: Features.hs
+  type: exitcode-stdio-1.0
+
+foreign-library ff-core
+  build-depends:
+      base
+    , bytestring
+    , text
+
+    , ff-core
+
+  hs-source-dirs: foreign
+  other-modules: FF.Foreign
+  type: native-shared

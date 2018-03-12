@@ -2,6 +2,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -39,7 +40,7 @@ instance Show (DocId doc) where
     show (DocId path) = path
 
 -- | Environment is the dataDir
-newtype Storage a = Storage (ReaderT FilePath LamportClock a)
+newtype StorageAction a = StorageAction (ReaderT FilePath LamportClock a)
     deriving (Applicative, Clock, Functor, Monad, MonadIO, Process)
 
 type Version = FilePath
@@ -52,21 +53,21 @@ class Clock m => MonadStorage m where
     createFile :: Collection doc => DocId doc -> LamportTime -> doc -> m ()
     readFile :: Collection doc => DocId doc -> Version -> m doc
 
-instance MonadStorage Storage where
-    listDirectoryIfExists relpath = Storage $ do
+instance MonadStorage StorageAction where
+    listDirectoryIfExists relpath = StorageAction $ do
         dir <- asks (</> relpath)
         liftIO $ do
             exists <- doesDirectoryExist dir
             if exists then listDirectory dir else pure []
 
-    createFile docId time doc = Storage $ do
+    createFile docId time doc = StorageAction $ do
         docDir <- askDocDir docId
         let file = docDir </> lamportTimeToFileName time
         liftIO $ do
             createDirectoryIfMissing True docDir
             BSL.writeFile file $ encode doc
 
-    readFile docId version = Storage $ do
+    readFile docId version = StorageAction $ do
         docDir <- askDocDir docId
         let file = docDir </> version
         contents <- liftIO $ BSL.readFile file
@@ -74,9 +75,14 @@ instance MonadStorage Storage where
             either (error . ((file ++ ": ") ++)) id $
             eitherDecode contents
 
-runStorage :: FilePath -> TVar LocalTime -> Storage a -> IO a
-runStorage dataDir var (Storage action) =
-    runLamportClock var $ runReaderT action dataDir
+data StorageConfig = StorageConfig
+    { dataDir :: FilePath
+    , clock   :: TVar LocalTime
+    }
+
+runStorage :: StorageConfig -> StorageAction a -> IO a
+runStorage StorageConfig { dataDir, clock } (StorageAction action) =
+    runLamportClock clock $ runReaderT action dataDir
 
 listDocuments
     :: forall doc m . (Collection doc, MonadStorage m) => m [DocId doc]

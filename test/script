@@ -1,12 +1,30 @@
 #!/bin/bash
 set -eux -o pipefail
 
-ghc_warnings=(-Wall -Wincomplete-record-updates -Wincomplete-uni-patterns)
+if [ `uname` == Darwin ]; then
+    dylib_ext=dylib
+else
+    dylib_ext=so
+fi
+
+ghc_warnings=(
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+)
 ghc_options=(${ghc_warnings[*]} -Werror)
 
-${STACK:-stack}                           \
-    test                                  \
-        --ghc-options="${ghc_options[*]}" \
-        --haddock                         \
-        --no-haddock-deps                 \
-        "$@"
+${STACK:-stack} test --ghc-options="${ghc_options[*]}"
+
+mkdir -p .lib
+local_install_root="`stack path --local-install-root`"
+cp -v "$local_install_root"/lib/lib*.$dylib_ext .lib
+
+(
+    mkdir -p .build
+    cd .build
+    cmake ../ff-qt
+    make
+)

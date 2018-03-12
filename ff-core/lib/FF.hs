@@ -51,8 +51,8 @@ import           System.Random (StdGen, mkStdGen, randoms)
 
 import           FF.Config (ConfigUI (..))
 import           FF.Options (Edit (..), New (..))
-import           FF.Storage (Collection, DocId, MonadStorage, Storage,
-                             listDocuments, load, modify, saveNew)
+import           FF.Storage (Collection, DocId, MonadStorage, listDocuments,
+                             load, modify, saveNew)
 import           FF.Types (ModeMap, Note (..), NoteId, NoteView (..),
                            Sample (..), Status (Active, Archived, Deleted),
                            TaskMode (..), noteView, singletonTaskModeMap)
@@ -66,10 +66,11 @@ getSamples
 getSamples = getSamplesWith $ const True
 
 cmdSearch
-    :: Text
+    :: MonadStorage m
+    => Text
     -> Maybe Int -- ^ limit
     -> Day -- ^ today
-    -> Storage (ModeMap Sample)
+    -> m (ModeMap Sample)
 cmdSearch substr = getSamplesWith
     (Text.isInfixOf (Text.toCaseFold substr) . Text.toCaseFold)
     ConfigUI {shuffle = False}
@@ -104,25 +105,24 @@ splitModes :: Day -> [NoteView] -> ModeMap [NoteView]
 splitModes = foldMap . singletonTaskModeMap
 
 takeSamples :: Maybe StdGen -> Maybe Int -> ModeMap [NoteView] -> ModeMap Sample
-takeSamples mGen limit modes =
-    (`evalState` limit) $ do
-        overdue  <- sample end   Overdue
-        endToday <- sample end   EndToday
-        endSoon  <- sample end   EndSoon
-        actual   <- sample start Actual
-        starting <- sample start Starting
-        pure . FullMap $ \case
-            Overdue  -> overdue
-            EndToday -> endToday
-            EndSoon  -> endSoon
-            Actual   -> actual
-            Starting -> starting
+takeSamples mGen limit modes = (`evalState` limit) $ do
+    overdue  <- sample end Overdue
+    endToday <- sample end EndToday
+    endSoon  <- sample end EndSoon
+    actual   <- sample start Actual
+    starting <- sample start Starting
+    pure . FullMap $ \case
+        Overdue  -> overdue
+        EndToday -> endToday
+        EndSoon  -> endSoon
+        Actual   -> actual
+        Starting -> starting
   where
     sample key mode = state $ \case
         Just n  -> (Sample (take n xs') (fromIntegral len), Just $ n - len)
         Nothing -> (Sample xs' (fromIntegral len), Nothing)
       where
-        xs = FullMap.lookup mode modes
+        xs  = FullMap.lookup mode modes
         -- in sorting by nid no business-logic is involved,
         -- it's just for determinism
         xs' = case mGen of
@@ -148,7 +148,7 @@ cmdNew New { newText, newStart, newEnd } today = do
     nid  <- saveNew note
     pure $ noteView nid note
 
-cmdDelete :: NoteId -> Storage NoteView
+cmdDelete :: MonadStorage m => NoteId -> m NoteView
 cmdDelete nid = modifyAndView nid $ \note@Note {..} -> do
     noteStatus' <- LWW.assign Deleted noteStatus
     noteText'   <- rgaEditText Text.empty noteText
@@ -160,17 +160,17 @@ cmdDelete nid = modifyAndView nid $ \note@Note {..} -> do
               , noteEnd    = noteEnd'
               }
 
-cmdDone :: NoteId -> Storage NoteView
+cmdDone :: MonadStorage m => NoteId -> m NoteView
 cmdDone nid = modifyAndView nid $ \note@Note { noteStatus } -> do
     noteStatus' <- LWW.assign Archived noteStatus
     pure note { noteStatus = noteStatus' }
 
-cmdUnarchive :: NoteId -> Storage NoteView
+cmdUnarchive :: MonadStorage m => NoteId -> m NoteView
 cmdUnarchive nid = modifyAndView nid $ \note@Note { noteStatus } -> do
     noteStatus' <- LWW.assign Active noteStatus
     pure note { noteStatus = noteStatus' }
 
-cmdEdit :: Edit -> Storage NoteView
+cmdEdit :: (MonadIO m, MonadStorage m) => Edit -> m NoteView
 cmdEdit (Edit nid Nothing Nothing Nothing) =
     modifyAndView nid $ \note@Note { noteText } -> do
         text'     <- liftIO . runExternalEditor $ rgaToText noteText
@@ -205,7 +205,7 @@ cmdEdit Edit { editId = nid, editEnd, editStart, editText } =
 lwwAssignIfJust :: Clock m => Maybe a -> LWW a -> m (LWW a)
 lwwAssignIfJust = maybe pure LWW.assign
 
-cmdPostpone :: NoteId -> Storage NoteView
+cmdPostpone :: (MonadIO m, MonadStorage m) => NoteId -> m NoteView
 cmdPostpone nid = modifyAndView nid $ \note@Note { noteStart, noteEnd } -> do
     today <- getUtcToday
     let start' = addDays 1 $ max today $ LWW.query noteStart
@@ -217,10 +217,10 @@ cmdPostpone nid = modifyAndView nid $ \note@Note { noteStart, noteEnd } -> do
 
 -- | Check the document exists. Return actual version.
 modifyOrFail
-    :: (Collection doc, Eq doc)
+    :: (Collection doc, Eq doc, MonadStorage m)
     => DocId doc
-    -> (doc -> Storage doc)
-    -> Storage doc
+    -> (doc -> m doc)
+    -> m doc
 modifyOrFail docId f = modify docId $ \case
     Nothing -> fail $ concat
         ["Can't load document ", show docId, ". Where did you get this id?"]
@@ -228,7 +228,7 @@ modifyOrFail docId f = modify docId $ \case
         docNew <- f docOld
         pure (docNew, docNew)
 
-modifyAndView :: NoteId -> (Note -> Storage Note) -> Storage NoteView
+modifyAndView :: MonadStorage m => NoteId -> (Note -> m Note) -> m NoteView
 modifyAndView nid f = noteView nid <$> modifyOrFail nid f
 
 getUtcToday :: MonadIO io => io Day
