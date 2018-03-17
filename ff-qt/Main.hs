@@ -190,7 +190,7 @@ newNoteWidget note@NoteView { text, start, end } = do
             pure fieldsBox
     pure this
 
--- Because last item is always a stretch.
+-- Because last item in the layout is always a stretch.
 sectionSize :: QLayoutConstPtr layout => layout -> IO Int
 sectionSize layout = pred <$> count layout
 
