@@ -18,12 +18,14 @@ import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Data.Time (Day, UTCTime (..))
 import           Data.Vector (Vector)
-import           GitHub (FetchCount (..), Issue (..), IssueRepoMod,
-                         IssueState (..), Milestone (..), URL (..),
-                         executeRequest', issueCreatedAt, issueHtmlUrl, issueId,
-                         issueMilestone, issueState, issueTitle, mkOwnerName,
-                         mkRepoName, stateAll, stateOpen)
+import           GitHub (Auth (OAuth), FetchCount (..), Issue (..),
+                         IssueRepoMod, IssueState (..), Milestone (..),
+                         URL (..), executeRequestMaybe, issueCreatedAt,
+                         issueHtmlUrl, issueId, issueMilestone, issueState,
+                         issueTitle, mkOwnerName, mkRepoName, stateAll,
+                         stateOpen)
 import           GitHub.Endpoints.Issues (issuesForRepoR)
+import           System.Posix.ByteString (getEnv)
 import           System.Process (readProcess)
 
 import           FF (splitModes, takeSamples)
@@ -50,8 +52,12 @@ getIssues mAddress mlimit issueState = do
         _ -> throwError $
             "Something is wrong with " <> address <>
             ". Please, check correctness of input. Right format is OWNER/REPO"
+    auth <-
+        liftIO (getEnv "FF_GITHUB_TOKEN") >>= \case
+            Nothing    -> pure Nothing
+            Just token -> pure $ Just $ OAuth token
     response <- withExceptT (Text.pack . show) $ ExceptT $
-        executeRequest' $ issuesForRepoR
+        executeRequestMaybe auth $ issuesForRepoR
             (mkOwnerName owner)
             (mkRepoName repo)
             issueState

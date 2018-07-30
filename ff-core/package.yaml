@@ -28,6 +28,7 @@ library:
     - text
     - time
     - typed-process
+    - unix
     - unordered-containers
     - vector
     - warp
