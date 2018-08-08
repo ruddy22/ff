@@ -269,13 +269,14 @@ case_json2ron = do
   where
     fs123merged = Map.singleton "note" $ Map.singleton "1" $
         Map.singleton "a6bp8-6qen" [i|
-            *object #1  @2  :0  !
-            *lww        @3  :status "Active"
-            *text       @4  :text.trace "helloworld"
-            *rga$c      @5  :text   "hello"
-            *rga$c      @6  :text   "world"
-            *lww        @7  :start  >0022-11-24
-            *lww        @8  :end    >0017-06-19
+            *ff$note    #1  @2  :0          !
+            *lww            @3  :status     "Active"
+            *text           @4  :text.trace "helloworld"
+            *rga            @5  :text       "h" "e" "l" "l" "o"
+            *rga            @6  :text       "w" "o" "r" "l" "d"
+            *lww            @7  :start      >0022-11-24
+            *lww            @8  :end        >0017-06-19
+            .
             |]
 
 (-:) :: a -> b -> (a, b)
