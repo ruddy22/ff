@@ -12,10 +12,11 @@ import           Control.Monad.State.Strict (StateT, gets, runStateT)
 import           CRDT.LamportClock (Clock, Pid (..), Process)
 import           CRDT.LamportClock.Simulation (ProcessSim, runLamportClockSim,
                                                runProcessSim)
-import           Data.Aeson (eitherDecode, encode)
+import           Data.Aeson (eitherDecode)
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import           RON.Text.Typed (encode)
 
 import           FF.Storage (CollectionName, DocId (..), MonadStorage (..),
                              Version, collectionName)

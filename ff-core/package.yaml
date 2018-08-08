@@ -4,34 +4,37 @@ copyright:
 
 library:
   dependencies:
-    - aeson
-    - aeson-pretty
-    - blaze-html
-    - bytestring
-    - containers
-    - crdt
-    - data-default-class
-    - directory
-    - errors
-    - extra
-    - filepath
-    - github
-    - mainland-pretty
-    - mtl
-    - optparse-applicative
-    - process
-    - random
-    - scotty
-    - semigroups
-    - stm
-    - temporary
-    - text
-    - time
-    - typed-process
-    - unordered-containers
-    - vector
-    - warp
-    - yaml
+    # global
+      - aeson
+      - aeson-pretty
+      - blaze-html
+      - bytestring
+      - containers
+      - crdt
+      - data-default-class
+      - directory
+      - errors
+      - extra
+      - filepath
+      - github
+      - mainland-pretty
+      - mtl
+      - optparse-applicative
+      - process
+      - random
+      - scotty
+      - semigroups
+      - stm
+      - temporary
+      - text
+      - time
+      - typed-process
+      - unordered-containers
+      - vector
+      - warp
+      - yaml
+    # organization
+      - ron
   source-dirs: lib
   other-modules:
     - FF.Types.Internal
